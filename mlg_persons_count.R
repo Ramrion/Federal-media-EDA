@@ -2,6 +2,9 @@ library(tidyverse)
 library(tidyfst)
 library(purrr)
 
+# Count which documents mention the most famous Russian persons of 2019 in the media according to:
+# https://www.mlg.ru/ratings/itogi2019/7976/
+
 mlg_persons <- c("Владимир(\\w*)\\W+(?:\\w+\\W+){0,1}?Путин",
                  "Михаил(\\w*)\\W+(?:\\w+\\W+){0,1}?Мишустин",
                  "Серге(\\w*)\\W+(?:\\w+\\W+){0,1}?Собянин",
@@ -76,7 +79,6 @@ persons_in_documents <- mlg_persons %>%
   map(function(z) as.numeric(grepl(z, x = out$meta$description))) %>% 
   setDT()
 
-test <- out$meta$source %>% unique %>% sort
 
 media_freq <- as.data.frame(table(out$meta$source))
 

@@ -6,8 +6,8 @@ library(fpp2)
 library(TTR)
 
 load("year_0.RData")
-spiting_data <- out$meta
-thetas <- year_ctm_xplore$theta
+spiting_data <- out$meta           # News metadata
+thetas <- year_ctm_xplore$theta    # Distribution of 73(?) topics in every news
 
 rm(out)
 rm(year_ctm_xplore)
@@ -16,23 +16,24 @@ levels(as.factor(spiting_data$source))
 
 media_x_news <- spiting_data %>%
   mutate(id = 1:nrow(spiting_data)) %>% 
-  filter(pubDate >= "2019-09-01", source == "Zona.media")
+  filter(pubDate >= "2019-09-01")
 
 media_x_news <- media_x_news[order(media_x_news$pubDate),]
 
 media_x_news_count <- plyr::count(media_x_news, "pubDate")
 
 KLD_resonance <-  function(data, w, date) {
-  
+  # data ~ distribution of topics in the document, it's kinda similar to probability as it sums to 1
   # w ~ number of news for each day
   # so sum of w should be equal length(data)
+  # date ~ period or posting dates
   
   # Creating indexes for each frame
-  # So, each news in frame t should be compared with every news in frame t-1
+  # Each news in frame t should be compared with every news in frame t+1
   # example of data in m_frame: 
-  # news with id 64 should be compared with news 1:63
-  # but news with id 1052 should be compared with news 851:1051
-  # because the day before news 1052 there were 200 news, namely, news 851:1051
+  # News with id 851 will be compared with news 852:1052
+  # news 851 was made in day t, but news 852:1052 in the day t+1
+  # news 850 will be also compared with news 852:1052, because it's still in the day t
   m_frame <- c()
   for (i in 1:(length(w) - 1)) {
     m_frame[i] <- list(rep(list(seq(sum(w[1:i]) + 1, sum(w[1:(i+1)]))),
@@ -41,8 +42,6 @@ KLD_resonance <-  function(data, w, date) {
   
   m_frame <- unlist(m_frame, recursive = FALSE)  
   px <- seq(1, (nrow(data) - w[length(w)]))
-  # Indexes of documents with wich we compare
-  # Example: Documents from 1:100 will be compared with 101
   
   
   # KLD of Moving frame
@@ -63,8 +62,13 @@ KLD_resonance <-  function(data, w, date) {
     mean(kld_news[x])
   })
   
+  # date[1:(length(date) - 1)] ~ as we calculate KLD based on the news of the next day
+  # that's why we cannot calculate KLD for the last day
+  
   resonance_media <- data.frame(mean_kld = kld_mean_day, pubDate = date[1:(length(date) - 1)])
 
+  # Saving resonance of each news and mean resonance of the day
+  
 finale <- list("news_resonance" = kld_news, "resonance_mean_day" = resonance_media)
   return(finale)
 }
@@ -72,7 +76,7 @@ finale <- list("news_resonance" = kld_news, "resonance_mean_day" = resonance_med
 
 
 # KLD_resonance for every particular media
-test <- lapply(levels(as.factor(spiting_data$source))[c(14,16)], function(x) {
+test <- lapply(levels(as.factor(spiting_data$source)), function(x) {
   media_x_news <- spiting_data %>%
     mutate(id = 1:nrow(spiting_data)) %>% 
     filter(pubDate >= "2019-09-01", source == x)
@@ -86,7 +90,6 @@ test <- lapply(levels(as.factor(spiting_data$source))[c(14,16)], function(x) {
   KLD_resonance(media_x_news_topic_distr, media_x_news_count$freq, media_x_news_count$pubDate)
 })
 
-cor(test[[1]]$resonance_mean_day$mean_kld[2:423], test2[[1]]$novelty_mean_day$mean_kld[1:422])
 
 
 # kld_media <- data.frame(mean_kld = kld_mean_day, pubDate = date[2:length(date)])

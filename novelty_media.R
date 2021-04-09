@@ -1,5 +1,3 @@
-# Calculate KLD of the news for each media
-
 library(tidyverse)
 library(purrr)
 library(LaplacesDemon)
@@ -8,8 +6,8 @@ library(fpp2)
 library(TTR)
 
 load("year_0.RData")
-spiting_data <- out$meta
-thetas <- year_ctm_xplore$theta
+spiting_data <- out$meta           # News metadata
+thetas <- year_ctm_xplore$theta    # Distribution of 73(?) topics in every news
 
 rm(out)
 rm(year_ctm_xplore)
@@ -25,12 +23,13 @@ media_x_news_count <- plyr::count(media_x_news, "pubDate")
 media_x_news_topic_distr <- thetas[media_x_news$id,]
 
 KLD_novelty <-  function(data, w, date) {
-  
+  # data ~ distribution of topics in the document, it's kinda similar to probability as it sums to 1
   # w ~ number of news for each day
   # so sum of w should be equal length(data)
+  # date ~ period or posting dates
   
   # Creating indexes for each frame
-  # So, each news in frame t should be compared with every news in frame t-1
+  # Each news in frame t should be compared with every news in frame t-1
   # example of data in m_frame: 
   # news with id 64 should be compared with news 1:63
   # but news with id 1052 should be compared with news 851:1051
@@ -66,7 +65,12 @@ KLD_novelty <-  function(data, w, date) {
     mean(kld_news[x])
   })
   
+  # date[2:length(date)] ~ as we calculate KLD based on the news of the day before
+  # it means that we cannot calculate KLD for the first day
+  
   novelty_media <- data.frame(mean_kld = kld_mean_day, pubDate = date[2:length(date)])
+  
+  # Saving novelty of each news and mean novelty of the day
 
 finale <- list("news_novelty" = kld_news, "novelty_mean_day" = novelty_media)
   return(finale)
@@ -74,9 +78,11 @@ finale <- list("news_novelty" = kld_news, "novelty_mean_day" = novelty_media)
 
 # the whole period:
 
-# whole_novelty <- KLD_novelty(media_x_news_topic_distr, media_x_news_count$freq, media_x_news_count$pubDate)
-# 
-# save(whole_novelty, file = "whole_media_novelty.RData")
+whole_novelty <- KLD_novelty(media_x_news_topic_distr, media_x_news_count$freq, media_x_news_count$pubDate)
+
+save(whole_novelty, file = "whole_media_novelty.RData")
+
+# for every media separetly:
 
 test2 <- lapply(levels(as.factor(spiting_data$source))[c(14,16)], function(x) {
   media_x_news <- spiting_data %>%
@@ -92,10 +98,7 @@ test2 <- lapply(levels(as.factor(spiting_data$source))[c(14,16)], function(x) {
   KLD_novelty(media_x_news_topic_distr, media_x_news_count$freq, media_x_news_count$pubDate)
 })
 
-levels(as.factor(spiting_data$source))[[17]]
-
-load("whole_media_resonance.RData")
-
+# Changes in novelty from september 2019 to december 2020
 ggplot(whole_novelty$novelty_mean_day, aes(x = as_date(pubDate), y = mean_kld)) +
   geom_line() +
   # geom_point(data = kld_mean_day[kld_mean_day$day_week %in% c("Сб", "Вс"),],
@@ -104,33 +107,9 @@ ggplot(whole_novelty$novelty_mean_day, aes(x = as_date(pubDate), y = mean_kld)) 
   #            aes(x = as_date(id), y = kld_day), color = "green") +
   scale_x_date(date_breaks = 'month')
 
+# Calculating correlation between resonance and novelty
+load("whole_media_resonance.RData")
+
 plot.ts(kld_mean_day)
 
 cor(kld_mean_day[2:424], whole_novelty$novelty_mean_day$mean_kld[1:423])
-
-# The same thing, but for the whole period
-
-klad <- read_csv("kld_full.csv")
-
-media_x_news_count <- plyr::count(spiting_data, "pubDate")
-
-d_frame <- c()
-for (i in 2:length(media_x_news_count$freq)) {
-  d_frame[i-1] <- list(seq(if (i == 2) 1 else sum(media_x_news_count$freq[2:(i-1)]) + 1,
-                           sum(media_x_news_count$freq[2:i])))
-}
-
-# Calculate mean KLD for each day
-
-kld_mean_day <- sapply(d_frame, function(x) {
-  mean(klad$KLD_full[x])
-})
-
-# Time series analysis
-
-ggAcf(kld_mean_day)
-
-test <- ts(kld_mean_day)
-
-plot.ts(test)
-test2 <- decompose(test, type = "multiplicative")
