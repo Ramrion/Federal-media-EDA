@@ -11,7 +11,7 @@ full_may_sep <- read_csv("~/year2019.csv")
 #   filter(!(names_source %in% c("Ridus.ru", "Pnp.ru", "Fontanka.ru", "Komsa_pravda_msc"))) %>%
 #   droplevels()
 
-
+# Preprocessing was done before
 full_may_sep <- textProcessor(full_may_sep$lemma, lowercase = FALSE,
                               removestopwords = FALSE, removenumbers = FALSE, language = "na",
                               stem = FALSE, removepunctuation = FALSE,
