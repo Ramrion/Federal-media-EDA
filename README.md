@@ -1,5 +1,5 @@
 # Federal media EDA
-## Status: In progress
+**Status: In progress**
 
 The idea of the project is to cover Russian federal media discourse, primary around the Covid pandemic in 2020, and to suggest the composition of these media how similar they are and in what way. 
 
